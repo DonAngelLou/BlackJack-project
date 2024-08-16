@@ -10,16 +10,34 @@ const getRandomCard = () => {
   const suits = ['♠', '♥', '♦', '♣'];
   const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const suit = suits[Math.floor(Math.random() * suits.length)];
-  const rank = ranks[Math.floor(Math.random() * ranks.length)];
+  const rank = ranks[Math.floor(Math.random() * ranks.length)]; 
   return { suit, rank };
 };
 
-const calculateHandTotal = (hand) => {
-  return hand.reduce((total, card) => {
-    if (['J', 'Q', 'K'].includes(card.rank)) return total + 10;
-    if (card.rank === 'A') return total + 11; // Simplified: Ace always counts as 11
-    return total + parseInt(card.rank);
-  }, 0);
+const calculateHandTotal = (hand, revealAll = false) => {
+  let total = 0;
+  let aces = 0;
+
+  hand.forEach((card) => {
+    if (!card.hidden || revealAll) {
+      if (['J', 'Q', 'K'].includes(card.rank)) {
+        total += 10;
+      } else if (card.rank === 'A') {
+        aces += 1;
+        total += 11;  // Ace initially counts as 11
+      } else {
+        total += parseInt(card.rank);
+      }
+    }
+  });
+
+  // Adjust for Aces if total > 21
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces -= 1;
+  }
+
+  return total;
 };
 
 export default function Home() {
@@ -32,7 +50,7 @@ export default function Home() {
   const [cardsDealt, setCardsDealt] = useState(false);
 
   const handleChipClick = (amount: number) => {
-    if (betAmount + amount <= playerBalance) {
+    if (betAmount + amount <= playerBalance && betAmount + amount >= 0) {
       setBetAmount(betAmount + amount);
     }
   };
@@ -45,6 +63,10 @@ export default function Home() {
     setPlayerBalance(playerBalance - betAmount);
     setMessage(`Bet placed: ${betAmount}`);
     dealInitialCards();
+  };
+
+  const resetBet = () => {
+    setBetAmount(0);
   };
 
   const dealInitialCards = () => {
@@ -68,18 +90,19 @@ export default function Home() {
   const handleStand = () => {
     if (!gameOver && cardsDealt) {
       let newDealerHand = dealerHand.map(card => ({ ...card, hidden: false }));
-      let dealerTotal = calculateHandTotal(newDealerHand);
+      let dealerTotal = calculateHandTotal(newDealerHand, true);
 
+      // Dealer hits until reaching a total of 17 or higher
       while (dealerTotal < 17) {
         const newCard = getRandomCard();
         newDealerHand = [...newDealerHand, newCard];
-        dealerTotal = calculateHandTotal(newDealerHand);
+        dealerTotal = calculateHandTotal(newDealerHand, true);
       }
 
       setDealerHand(newDealerHand);
 
       const playerTotal = calculateHandTotal(playerHand);
-      dealerTotal = calculateHandTotal(newDealerHand);
+      dealerTotal = calculateHandTotal(newDealerHand, true);
 
       if (dealerTotal > 21 || playerTotal > dealerTotal) {
         handleWin();
@@ -113,6 +136,20 @@ export default function Home() {
     setCardsDealt(false);
   };
 
+  useEffect(() => {
+    const playerTotal = calculateHandTotal(playerHand);
+    if (playerTotal > 21) {
+      handleLose();
+    }
+  }, [playerHand]);
+
+  useEffect(() => {
+    if (gameOver && dealerHand.some(card => card.hidden)) {
+      const newDealerHand = dealerHand.map(card => ({ ...card, hidden: false }));
+      setDealerHand(newDealerHand);
+    }
+  }, [gameOver]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-700 to-green-900 flex flex-col items-center justify-center space-y-8">
       <h1 className="text-5xl text-white font-bold">Blackjack</h1>
@@ -120,7 +157,14 @@ export default function Home() {
         <Player name="Dealer" hand={dealerHand} total={calculateHandTotal(dealerHand)} />
         <Player name="Player" hand={playerHand} total={calculateHandTotal(playerHand)} />
       </div>
-      {!cardsDealt && <BettingControls onChipClick={handleChipClick} betAmount={betAmount} placeBet={placeBet} />}
+      {!cardsDealt && (
+        <BettingControls
+          onChipClick={handleChipClick}
+          betAmount={betAmount}
+          placeBet={placeBet}
+          resetBet={resetBet}
+        />
+      )}
       {cardsDealt && <GameControls onHit={handleHit} onStand={handleStand} onReset={handleReset} />}
       <h2 className="text-3xl text-white mt-4">{message}</h2>
       <h3 className="text-2xl text-yellow-300">Balance: ${playerBalance}</h3>

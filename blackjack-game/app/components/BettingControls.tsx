@@ -4,6 +4,7 @@ interface BettingControlsProps {
   onChipClick: (amount: number) => void;
   betAmount: number;
   placeBet: () => void;
+  resetBet: () => void;
 }
 
 const chips = [
@@ -13,7 +14,7 @@ const chips = [
   { label: "$500", value: 500, color: "bg-yellow-500" },
 ];
 
-const BettingControls: React.FC<BettingControlsProps> = ({ onChipClick, betAmount, placeBet }) => {
+const BettingControls: React.FC<BettingControlsProps> = ({ onChipClick, betAmount, placeBet, resetBet }) => {
   return (
     <div className="flex flex-col items-center space-y-4">
       <div className="flex space-x-4">
@@ -28,12 +29,20 @@ const BettingControls: React.FC<BettingControlsProps> = ({ onChipClick, betAmoun
           </motion.div>
         ))}
       </div>
-      <button
-        className="mt-4 px-4 py-2 bg-yellow-500 text-white rounded shadow-lg"
-        onClick={placeBet}
-      >
-        Place Bet: ${betAmount}
-      </button>
+      <div className="flex space-x-4 mt-4">
+        <button
+          className="px-4 py-2 bg-yellow-500 text-white rounded shadow-lg"
+          onClick={placeBet}
+        >
+          Place Bet: ${betAmount}
+        </button>
+        <button
+          className="px-4 py-2 bg-gray-500 text-white rounded shadow-lg"
+          onClick={resetBet}
+        >
+          Reset Bet
+        </button>
+      </div>
     </div>
   );
 };
